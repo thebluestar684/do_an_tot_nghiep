@@ -5,3 +5,6 @@
 !.gitignore
 !.gitattributes
 !source_code/
+
+# Chặn tất cả các file zip
+*.zip
