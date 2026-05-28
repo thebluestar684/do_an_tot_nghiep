@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanFlow</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Traffic Flow Predection & Analysis</h1>
+
+            <!-- Congestion Status -->
+            <div class="congestion-status">
+                <h2>Congestion Status</h2>
+                <p id="congestion-status" class="status-text">Loading...</p>
+            </div>
+        </header>
+
+        <!-- Total Vehicle Count Section -->
+        <section class="summary-section">
+            <h2>Total Vehicle Count</h2>
+            <div id="total-vehicle-box">
+                <p id="total-vehicle-count">0</p>
+            </div>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="upload-section">
+            <form id="uploadForm" enctype="multipart/form-data" onsubmit="return false;">
+                <label for="videoInput" id="fileButton" class="custom-file-upload">
+                    Choose File
+                </label>
+                <input type="file" id="videoInput" name="video" accept="video/*" required onchange="handleFileSelection()">
+                <button type="button" id="uploadButton" style="display: none;" onclick="uploadVideo()">Upload Video</button>
+            </form>
+            <div id="uploadStatus"></div>
+        </section>
+
+        <!-- Results Section -->
+        <div class="results-container">
+            <!-- Video Stream -->
+            <div class="frame-section">
+                <h2>Video Stream</h2>
+                <img id="video" src="/video_feed" alt="Video Stream" class="responsive-video" />
+            </div>
+
+            <!-- Traffic Prediction Graph -->
+            <div class="graph-section clickable" onclick="openModal('prediction-graph')">
+                <h2>Traffic Prediction (24 Hours)</h2>
+                <img id="prediction-graph" src="/prediction_graph" alt="Traffic Prediction Graph" class="responsive-video" />
+            </div>
+            <!-- Logout Button -->
+            <button id="logoutButton" onclick="logout()" class="logout-btn">Logout</button>
+
+            <!-- Speed Graph -->
+            <div class="graph-section clickable" onclick="openModal('speed-graph')">
+                <h2>Average Vehicle Speed</h2>
+                <img id="speed-graph" src="/speed_graph" alt="Speed Graph" class="responsive-video" />
+            </div>
+
+            <!-- Congestion Graph -->
+            <div class="graph-section clickable" onclick="openModal('congestion-graph')">
+                <h2>Congestion Analysis</h2>
+                <img id="congestion-graph" src="/congestion_graph" alt="Congestion Analysis Graph" class="responsive-video" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Enlarged Graphs -->
+    <div id="modal" class="modal">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <img id="modal-content" alt="Enlarged Graph">
+    </div>
+
+    <script>
+        function handleFileSelection() {
+            const fileButton = document.getElementById("fileButton");
+            const uploadButton = document.getElementById("uploadButton");
+            const videoInput = document.getElementById("videoInput");
+
+            if (videoInput.files.length > 0) {
+                fileButton.style.display = "none"; // Hide the "Choose File" button
+                uploadButton.style.display = "inline-block"; // Show the "Upload Video" button
+            }
+        }
+
+        function resetUploadSection() {
+            const fileButton = document.getElementById("fileButton");
+            const uploadButton = document.getElementById("uploadButton");
+            const videoInput = document.getElementById("videoInput");
+            const uploadStatus = document.getElementById("uploadStatus");
+
+            // Reset input and button states
+            videoInput.value = ""; // Clear the file input
+            fileButton.style.display = "inline-block"; // Show "Choose File"
+            uploadButton.style.display = "none"; // Hide "Upload Video"
+            uploadStatus.innerText = ""; // Clear the status message
+        }
+
+        function uploadVideo() {
+            const formData = new FormData();
+            const videoInput = document.getElementById("videoInput");
+
+            if (!videoInput.files.length) {
+                alert("Please select a video to upload.");
+                return;
+            }
+
+            formData.append("video", videoInput.files[0]);
+
+            fetch("/upload", {
+                method: "POST",
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                const uploadStatus = document.getElementById("uploadStatus");
+                if (data.success) {
+                    uploadStatus.innerText = data.message;
+                    uploadStatus.style.color = "green";
+                    document.getElementById("video").src = "/video_feed?" + new Date().getTime();
+                } else {
+                    uploadStatus.style.color = "red";
+                    uploadStatus.innerText = data.message;
+                }
+
+                // Reset the upload section after upload
+                resetUploadSection();
+            })
+            .catch(error => {
+                console.error("Error uploading video:", error);
+                const uploadStatus = document.getElementById("uploadStatus");
+                uploadStatus.style.color = "red";
+                uploadStatus.innerText = "Error uploading video.";
+
+                // Reset the upload section after failure
+                resetUploadSection();
+            });
+        }
+
+        function openModal(graphId) {
+            const modal = document.getElementById("modal");
+            const modalContent = document.getElementById("modal-content");
+            const graph = document.getElementById(graphId);
+
+            modal.style.display = "block";
+            modalContent.src = graph.src + "?" + new Date().getTime(); // Prevent caching
+        }
+
+        function closeModal() {
+            document.getElementById("modal").style.display = "none";
+        }
+
+        function updateVehicleCount() {
+            fetch('/total_vehicle_count')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("total-vehicle-count").innerText = data.count;
+                })
+                .catch(error => console.error('Error fetching vehicle count:', error));
+        }
+
+        function updateCongestionStatus() {
+            fetch('/congestion_status')
+                .then(response => response.json())
+                .then(data => {
+                    const statusElement = document.getElementById("congestion-status");
+                    statusElement.innerText = data.status;
+
+                    // Change color based on status
+                    if (data.status === "Congested") {
+                        statusElement.style.color = "red";
+                    } else if (data.status === "Moderate Traffic") {
+                        statusElement.style.color = "orange";
+                    } else {
+                        statusElement.style.color = "green";
+                    }
+                })
+                .catch(error => console.error('Error fetching congestion status:', error));
+        }
+
+        function refreshGraphs() {
+            document.getElementById("prediction-graph").src = "/prediction_graph?" + new Date().getTime();
+            document.getElementById("speed-graph").src = "/speed_graph?" + new Date().getTime();
+            document.getElementById("congestion-graph").src = "/congestion_graph?" + new Date().getTime();
+        }
+     
+        function logout() {
+        // Redirect to the logout route
+            window.location.href = "/logout";
+         }
+  
+
+        setInterval(() => {
+            updateVehicleCount();
+            updateCongestionStatus();
+            refreshGraphs();
+        }, 1000);
+    </script>
+</body>
+</html>
