@@ -1,1 +1,4 @@
 source_code.zip filter=lfs diff=lfs merge=lfs -text
+source[[:space:]]code/**/*.csv filter=lfs diff=lfs merge=lfs -text
+source[[:space:]]code/**/*.pt filter=lfs diff=lfs merge=lfs -text
+source[[:space:]]code/**/variables.data-00000-of-00001 filter=lfs diff=lfs merge=lfs -text

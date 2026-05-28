@@ -1,0 +1,7 @@
+# Chặn toàn bộ mọi thứ ở thư mục gốc
+/*
+
+# Ngoại trừ file cấu hình Git và thư mục source code
+!.gitignore
+!.gitattributes
+!source code/
